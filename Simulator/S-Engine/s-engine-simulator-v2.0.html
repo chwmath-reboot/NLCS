@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S-Engine 戰鬪 試演器 v2</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      min-height: 100vh;
+      background: linear-gradient(180deg, #0a0a0f 0%, #1a1a2e 50%, #0a0a0f 100%);
+      color: #e0e0e0;
+      font-family: 'Noto Sans KR', -apple-system, sans-serif;
+      padding: 30px 20px;
+    }
+    
+    .container { max-width: 1400px; margin: 0 auto; }
+    
+    header { text-align: center; margin-bottom: 30px; }
+    
+    h1 {
+      font-family: 'Noto Serif KR', serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #ffd700 0%, #ff6b35 50%, #ffd700 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+    }
+    
+    .subtitle { color: #888; font-size: 0.9rem; }
+    
+    .main-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    
+    @media (max-width: 1100px) {
+      .main-layout { grid-template-columns: 1fr; }
+    }
+    
+    .panels {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    
+    .panel {
+      border-radius: 12px;
+      padding: 20px;
+    }
+    
+    .panel.attacker {
+      background: linear-gradient(135deg, rgba(231,76,60,0.08) 0%, rgba(231,76,60,0.02) 100%);
+      border: 2px solid rgba(231,76,60,0.25);
+    }
+    
+    .panel.defender {
+      background: linear-gradient(135deg, rgba(52,152,219,0.08) 0%, rgba(52,152,219,0.02) 100%);
+      border: 2px solid rgba(52,152,219,0.25);
+    }
+    
+    .panel h2 {
+      font-family: 'Noto Serif KR', serif;
+      font-size: 1.3rem;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    
+    .panel.attacker h2 { color: #e74c3c; }
+    .panel.defender h2 { color: #3498db; }
+    
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .form-group { }
+    
+    label {
+      display: block;
+      margin-bottom: 4px;
+      color: #a0a0a0;
+      font-size: 0.8rem;
+    }
+    
+    .highlight-red { color: #e74c3c; }
+    .highlight-blue { color: #3498db; }
+    .highlight-gold { color: #ffd700; }
+    .highlight-green { color: #2ecc71; }
+    
+    input[type="text"], select {
+      width: 100%;
+      padding: 8px 10px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 0.9rem;
+      font-family: inherit;
+    }
+    
+    input[type="range"] {
+      width: 100%;
+      margin-top: 2px;
+    }
+    
+    .status-bars {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    
+    .status-bar {
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      padding: 8px 12px;
+    }
+    
+    .bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      margin-bottom: 4px;
+    }
+    
+    .bar-track {
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .bar-fill {
+      height: 100%;
+      transition: width 0.3s ease;
+    }
+    
+    .bar-fill.hp { background: linear-gradient(90deg, #c0392b, #e74c3c); }
+    .bar-fill.neigong { background: linear-gradient(90deg, #2980b9, #3498db); }
+    
+    .calc-result {
+      margin-top: 12px;
+      padding: 12px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      font-size: 0.8rem;
+    }
+    
+    .calc-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    
+    .calc-grid .full { grid-column: 1 / -1; text-align: center; margin-top: 4px; }
+    
+    /* 전투 로그 영역 */
+    .battle-section {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    
+    .battle-controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .btn {
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .btn:hover { transform: scale(1.03); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    
+    .btn-battle {
+      background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(231,76,60,0.3);
+    }
+    
+    .btn-auto {
+      background: linear-gradient(135deg, #f39c12 0%, #d68910 100%);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(243,156,18,0.3);
+    }
+    
+    .btn-reset {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #aaa;
+    }
+    
+    .btn-stop {
+      background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+      color: #fff;
+    }
+    
+    .battle-log-container {
+      flex: 1;
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      min-height: 500px;
+      max-height: 700px;
+    }
+    
+    .log-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .log-header h3 {
+      color: #ffd700;
+      font-family: 'Noto Serif KR', serif;
+      font-size: 1.1rem;
+    }
+    
+    .round-counter {
+      background: rgba(255,215,0,0.2);
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      color: #ffd700;
+    }
+    
+    .log-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      font-family: 'D2Coding', monospace, sans-serif;
+      font-size: 0.85rem;
+      line-height: 1.6;
+    }
+    
+    .log-line { margin-bottom: 2px; color: #bbb; }
+    .log-line.title { color: #ffd700; font-weight: bold; }
+    .log-line.danger { color: #e74c3c; }
+    .log-line.warning { color: #f39c12; }
+    .log-line.success { color: #2ecc71; }
+    .log-line.info { color: #3498db; }
+    .log-line.divider { color: #555; }
+    .log-line.round-title { 
+      color: #fff; 
+      background: rgba(255,255,255,0.1); 
+      padding: 4px 8px; 
+      border-radius: 4px;
+      margin: 8px 0;
+    }
+    
+    .battle-result {
+      padding: 16px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      text-align: center;
+    }
+    
+    .result-text {
+      font-family: 'Noto Serif KR', serif;
+      font-size: 1.3rem;
+    }
+    
+    .result-winner { color: #ffd700; }
+    .result-draw { color: #9b59b6; }
+    
+    /* 도주 권장 알림 */
+    .flee-warning {
+      background: rgba(243,156,18,0.2);
+      border: 1px solid rgba(243,156,18,0.5);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 8px;
+      text-align: center;
+    }
+    
+    .flee-warning .icon { font-size: 1.5rem; }
+    .flee-warning .text { color: #f39c12; font-size: 0.9rem; margin-top: 4px; }
+    
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #555;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>S-Engine 戰鬪 試演器</h1>
+      <p class="subtitle">무협 세계관 전투 시뮬레이터 v2.0 - 보법 & 연속전투</p>
+    </header>
+    
+    <div class="main-layout">
+      <!-- 좌측: 캐릭터 설정 -->
+      <div class="panels">
+        <!-- 공격자 패널 -->
+        <div class="panel attacker">
+          <h2>⚔️ 공격자</h2>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>이름</label>
+              <input type="text" id="atk-name" value="검호">
+            </div>
+            <div class="form-group">
+              <label>경지 <span class="highlight-red" id="atk-gyeongji-label">絶頂</span></label>
+              <select id="atk-gyeongji" onchange="updateAll()">
+                <option value="삼류">삼류 (三流)</option>
+                <option value="이류">이류 (二流)</option>
+                <option value="일류">일류 (一流)</option>
+                <option value="절정" selected>절정 (絶頂)</option>
+                <option value="초절정">초절정 (超絶頂)</option>
+                <option value="화경">화경 (化境)</option>
+                <option value="현경">현경 (玄境)</option>
+                <option value="생사경">생사경 (生死境)</option>
+                <option value="자연경">자연경 (自然境)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>심법</label>
+              <select id="atk-simbeop" onchange="updateAll()">
+                <option value="삼재심법">삼재심법</option>
+                <option value="기초심법">기초심법</option>
+                <option value="기본심법" selected>기본심법</option>
+                <option value="심화심법">심화심법</option>
+                <option value="비전심법">비전심법</option>
+                <option value="명운심법">명운심법</option>
+                <option value="달마심공">달마심공</option>
+                <option value="천마심공">천마심공</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>보법 <span class="highlight-gold" id="atk-bobeop-label">Lv5</span></label>
+              <select id="atk-bobeop" onchange="updateAll()">
+                <option value="0">없음</option>
+                <option value="1">기초보법 1단계 (Lv1)</option>
+                <option value="2">기초보법 2단계 (Lv2)</option>
+                <option value="3">기초보법 3단계 (Lv3)</option>
+                <option value="4">기본보법 1단계 (Lv4)</option>
+                <option value="5" selected>기본보법 2단계 (Lv5)</option>
+                <option value="6">기본보법 3단계 (Lv6)</option>
+                <option value="7">심화보법 1단계 (Lv7)</option>
+                <option value="8">심화보법 2단계 (Lv8)</option>
+                <option value="9">심화보법 3단계 (Lv9)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>운기진행도: <span id="atk-ungi-val">100</span>%</label>
+              <input type="range" id="atk-ungi" min="80" max="100" value="100" 
+                     style="accent-color: #e74c3c;" oninput="updateAll()">
+            </div>
+          </div>
+          
+          <div class="status-bars">
+            <div class="status-bar">
+              <div class="bar-label">
+                <span>체력</span>
+                <span class="highlight-red" id="atk-hp-text">100 / 100</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill hp" id="atk-hp-bar" style="width: 100%"></div>
+              </div>
+              <input type="range" id="atk-hp" min="1" max="100" value="100" 
+                     style="accent-color: #e74c3c; margin-top: 4px;" oninput="updateAll()">
+            </div>
+            <div class="status-bar">
+              <div class="bar-label">
+                <span>내공</span>
+                <span class="highlight-blue" id="atk-neigong-text">100 / 100</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill neigong" id="atk-neigong-bar" style="width: 100%"></div>
+              </div>
+              <input type="range" id="atk-neigong" min="1" max="100" value="100" 
+                     style="accent-color: #3498db; margin-top: 4px;" oninput="updateAll()">
+            </div>
+          </div>
+          
+          <div class="calc-result">
+            <div class="calc-grid">
+              <div>운기경로: <span class="highlight-red" id="atk-calc-gyeongro">5.48</span></div>
+              <div>공격속도: <span class="highlight-red" id="atk-calc-speed">1.50</span>초</div>
+              <div>이동속도: <span class="highlight-gold" id="atk-calc-move">√5</span></div>
+              <div>보법 추가피해: <span class="highlight-gold" id="atk-calc-bobeop">+50%</span></div>
+              <div>운기위험성: <span class="highlight-red" id="atk-calc-danger">0.120</span></div>
+              <div>전투불능: <span class="highlight-red" id="atk-calc-threshold">40%</span></div>
+              <div class="full">내공파괴력: <span class="highlight-red" style="font-size:1.1rem;font-weight:bold" id="atk-calc-power">5.48</span> → 보법 적용: <span class="highlight-gold" style="font-size:1.1rem;font-weight:bold" id="atk-calc-total">8.22</span></div>
+            </div>
+          </div>
+          
+          <div class="flee-warning" id="atk-flee" style="display: none;">
+            <div class="icon">⚠️</div>
+            <div class="text">도주를 권장합니다!</div>
+          </div>
+        </div>
+        
+        <!-- 방어자 패널 -->
+        <div class="panel defender">
+          <h2>🛡️ 방어자</h2>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>이름</label>
+              <input type="text" id="def-name" value="도적">
+            </div>
+            <div class="form-group">
+              <label>경지 <span class="highlight-blue" id="def-gyeongji-label">一流</span></label>
+              <select id="def-gyeongji" onchange="updateAll()">
+                <option value="삼류">삼류 (三流)</option>
+                <option value="이류">이류 (二流)</option>
+                <option value="일류" selected>일류 (一流)</option>
+                <option value="절정">절정 (絶頂)</option>
+                <option value="초절정">초절정 (超絶頂)</option>
+                <option value="화경">화경 (化境)</option>
+                <option value="현경">현경 (玄境)</option>
+                <option value="생사경">생사경 (生死境)</option>
+                <option value="자연경">자연경 (自然境)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>심법</label>
+              <select id="def-simbeop" onchange="updateAll()">
+                <option value="삼재심법">삼재심법</option>
+                <option value="기초심법" selected>기초심법</option>
+                <option value="기본심법">기본심법</option>
+                <option value="심화심법">심화심법</option>
+                <option value="비전심법">비전심법</option>
+                <option value="명운심법">명운심법</option>
+                <option value="달마심공">달마심공</option>
+                <option value="천마심공">천마심공</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>보법 <span class="highlight-gold" id="def-bobeop-label">Lv3</span></label>
+              <select id="def-bobeop" onchange="updateAll()">
+                <option value="0">없음</option>
+                <option value="1">기초보법 1단계 (Lv1)</option>
+                <option value="2">기초보법 2단계 (Lv2)</option>
+                <option value="3" selected>기초보법 3단계 (Lv3)</option>
+                <option value="4">기본보법 1단계 (Lv4)</option>
+                <option value="5">기본보법 2단계 (Lv5)</option>
+                <option value="6">기본보법 3단계 (Lv6)</option>
+                <option value="7">심화보법 1단계 (Lv7)</option>
+                <option value="8">심화보법 2단계 (Lv8)</option>
+                <option value="9">심화보법 3단계 (Lv9)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>운기진행도: <span id="def-ungi-val">90</span>%</label>
+              <input type="range" id="def-ungi" min="80" max="100" value="90" 
+                     style="accent-color: #3498db;" oninput="updateAll()">
+            </div>
+          </div>
+          
+          <div class="status-bars">
+            <div class="status-bar">
+              <div class="bar-label">
+                <span>체력</span>
+                <span class="highlight-red" id="def-hp-text">100 / 100</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill hp" id="def-hp-bar" style="width: 100%"></div>
+              </div>
+              <input type="range" id="def-hp" min="1" max="100" value="100" 
+                     style="accent-color: #e74c3c; margin-top: 4px;" oninput="updateAll()">
+            </div>
+            <div class="status-bar">
+              <div class="bar-label">
+                <span>내공</span>
+                <span class="highlight-blue" id="def-neigong-text">100 / 100</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill neigong" id="def-neigong-bar" style="width: 100%"></div>
+              </div>
+              <input type="range" id="def-neigong" min="1" max="100" value="100" 
+                     style="accent-color: #3498db; margin-top: 4px;" oninput="updateAll()">
+            </div>
+          </div>
+          
+          <div class="calc-result">
+            <div class="calc-grid">
+              <div>운기경로: <span class="highlight-blue" id="def-calc-gyeongro">4.47</span></div>
+              <div>공격속도: <span class="highlight-blue" id="def-calc-speed">1.73</span>초</div>
+              <div>이동속도: <span class="highlight-gold" id="def-calc-move">√3</span></div>
+              <div>보법 추가피해: <span class="highlight-gold" id="def-calc-bobeop">+30%</span></div>
+              <div>운기위험성: <span class="highlight-blue" id="def-calc-danger">0.112</span></div>
+              <div>전투불능: <span class="highlight-blue" id="def-calc-threshold">40%</span></div>
+              <div class="full">내공파괴력: <span class="highlight-blue" style="font-size:1.1rem;font-weight:bold" id="def-calc-power">4.02</span> → 보법 적용: <span class="highlight-gold" style="font-size:1.1rem;font-weight:bold" id="def-calc-total">5.23</span></div>
+            </div>
+          </div>
+          
+          <div class="flee-warning" id="def-flee" style="display: none;">
+            <div class="icon">⚠️</div>
+            <div class="text">도주를 권장합니다!</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 우측: 전투 로그 -->
+      <div class="battle-section">
+        <div class="battle-controls">
+          <button class="btn btn-battle" onclick="executeOneRound()">⚔️ 1합</button>
+          <button class="btn btn-auto" id="btn-auto" onclick="startAutoBattle()">🔄 자동 전투</button>
+          <button class="btn btn-stop" id="btn-stop" onclick="stopAutoBattle()" style="display:none;">⏹️ 중지</button>
+          <button class="btn btn-reset" onclick="resetBattle()">↺ 초기화</button>
+        </div>
+        
+        <div class="battle-log-container">
+          <div class="log-header">
+            <h3>📜 전투 기록</h3>
+            <div class="round-counter">제 <span id="round-num">0</span> 합</div>
+          </div>
+          <div class="log-content" id="log-content">
+            <div class="log-line info">전투를 시작하려면 [1합] 또는 [자동 전투] 버튼을 누르세요.</div>
+          </div>
+          <div class="battle-result" id="battle-result" style="display: none;">
+            <div class="result-text" id="result-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <footer>
+      S-Engine Combat Simulator v2.0 by ShadowK
+    </footer>
+  </div>
+  
+  <script>
+    // ===== 데이터 정의 =====
+    const GYEONGJI_DATA = {
+      '삼류': { level: 1, attackSpeed: Math.sqrt(1), label: '三流', maxBobeop: 2 },
+      '이류': { level: 2, attackSpeed: Math.sqrt(2), label: '二流', maxBobeop: 3 },
+      '일류': { level: 3, attackSpeed: Math.sqrt(3), label: '一流', maxBobeop: 4 },
+      '절정': { level: 4, attackSpeed: Math.sqrt(4), label: '絶頂', maxBobeop: 5 },
+      '초절정': { level: 5, attackSpeed: Math.sqrt(5), label: '超絶頂', maxBobeop: 6 },
+      '화경': { level: 6, attackSpeed: Math.sqrt(6), label: '化境', maxBobeop: 7 },
+      '현경': { level: 7, attackSpeed: Math.sqrt(7), label: '玄境', maxBobeop: 8 },
+      '생사경': { level: 8, attackSpeed: Math.sqrt(8), label: '生死境', maxBobeop: 9 },
+      '자연경': { level: 9, attackSpeed: Math.sqrt(9), label: '自然境', maxBobeop: 10 }
+    };
+    
+    const SIMBEOP_DATA = {
+      '삼재심법': { chukgi: 10, stability: 90, total: 100, type: '기본' },
+      '기초심법': { chukgi: 20, stability: 80, total: 100, type: '기초' },
+      '기본심법': { chukgi: 30, stability: 70, total: 100, type: '기본' },
+      '심화심법': { chukgi: 40, stability: 70, total: 110, type: '심화' },
+      '비전심법': { chukgi: 70, stability: 60, total: 130, type: '비전' },
+      '명운심법': { chukgi: 110, stability: 80, total: 190, type: '신공Lv1' },
+      '달마심공': { chukgi: 120, stability: 80, total: 200, type: '신공Lv2' },
+      '천마심공': { chukgi: 130, stability: 70, total: 200, type: '신공Lv2' }
+    };
+    
+    const COMBAT_DISABLE = {
+      '기초': 40, '기본': 40, '심화': 40,
+      '비전': 35, '신공Lv1': 30, '신공Lv2': 25
+    };
+    
+    // 도주 권장 기준 (전투불능 + 10%)
+    const FLEE_THRESHOLD_BONUS = 15;
+    
+    // ===== 전투 상태 =====
+    let battleState = {
+      round: 0,
+      isRunning: false,
+      autoInterval: null,
+      attacker: { hp: 100, neigong: 100 },
+      defender: { hp: 100, neigong: 100 },
+      winner: null
+    };
+    
+    // ===== 계산 함수 =====
+    function getCharData(prefix) {
+      const gyeongji = document.getElementById(`${prefix}-gyeongji`).value;
+      const simbeop = document.getElementById(`${prefix}-simbeop`).value;
+      const bobeop = parseInt(document.getElementById(`${prefix}-bobeop`).value);
+      const ungi = parseInt(document.getElementById(`${prefix}-ungi`).value);
+      const hp = battleState.round > 0 ? battleState[prefix === 'atk' ? 'attacker' : 'defender'].hp : parseInt(document.getElementById(`${prefix}-hp`).value);
+      const neigong = battleState.round > 0 ? battleState[prefix === 'atk' ? 'attacker' : 'defender'].neigong : parseInt(document.getElementById(`${prefix}-neigong`).value);
+      
+      const g = GYEONGJI_DATA[gyeongji];
+      const s = SIMBEOP_DATA[simbeop];
+      
+      const ungiGyeongro = Math.sqrt(s.chukgi);
+      const danger = 1 / Math.sqrt(s.stability);
+      const ungiRemain = 100 - ungi;
+      const baseAttackTime = 3 / g.attackSpeed;
+      
+      // 내공 70% 이하 속도 감소
+      let speedMod = 1;
+      if (neigong < 70) speedMod -= (70 - neigong) * 0.03;
+      const attackTime = baseAttackTime / Math.max(speedMod, 0.1);
+      
+      // 이동속도 (보법 레벨 기준)
+      const moveSpeed = bobeop > 0 ? Math.sqrt(bobeop) : Math.sqrt(1);
+      
+      // 보법 추가 피해 (10% * 레벨)
+      const bobeopBonus = bobeop * 0.1;
+      
+      // 내공파괴력
+      let power = ungiGyeongro * (ungi / 100);
+      if (hp < 80) power *= (1 - (80 - hp) * 0.03);
+      
+      // 보법 적용 총 파괴력
+      const totalPower = power * (1 + bobeopBonus);
+      
+      // 전투불능 임계값
+      const threshold = COMBAT_DISABLE[s.type];
+      
+      // 도주 권장 여부
+      const shouldFlee = neigong <= (threshold + FLEE_THRESHOLD_BONUS);
+      
+      return {
+        name: document.getElementById(`${prefix}-name`).value,
+        gyeongji, simbeop, bobeop, ungi, hp, neigong,
+        g, s, ungiGyeongro, danger, ungiRemain, attackTime,
+        moveSpeed, bobeopBonus, power, totalPower, threshold, shouldFlee,
+        speedMod
+      };
+    }
+    
+    function updateDisplay(prefix) {
+      const data = getCharData(prefix);
+      const state = battleState[prefix === 'atk' ? 'attacker' : 'defender'];
+      
+      // 라벨 업데이트
+      document.getElementById(`${prefix}-gyeongji-label`).textContent = data.g.label;
+      document.getElementById(`${prefix}-bobeop-label`).textContent = data.bobeop > 0 ? `Lv${data.bobeop}` : '없음';
+      document.getElementById(`${prefix}-ungi-val`).textContent = data.ungi;
+      
+      // HP/내공 바 업데이트
+      const displayHp = battleState.round > 0 ? state.hp : data.hp;
+      const displayNeigong = battleState.round > 0 ? state.neigong : data.neigong;
+      
+      document.getElementById(`${prefix}-hp-text`).textContent = `${displayHp.toFixed(1)} / 100`;
+      document.getElementById(`${prefix}-hp-bar`).style.width = `${displayHp}%`;
+      document.getElementById(`${prefix}-neigong-text`).textContent = `${displayNeigong.toFixed(1)} / 100`;
+      document.getElementById(`${prefix}-neigong-bar`).style.width = `${displayNeigong}%`;
+      
+      // 계산 결과 업데이트
+      document.getElementById(`${prefix}-calc-gyeongro`).textContent = data.ungiGyeongro.toFixed(2);
+      document.getElementById(`${prefix}-calc-speed`).textContent = data.attackTime.toFixed(2);
+      document.getElementById(`${prefix}-calc-move`).textContent = `√${data.bobeop || 1}`;
+      document.getElementById(`${prefix}-calc-bobeop`).textContent = `+${(data.bobeopBonus * 100).toFixed(0)}%`;
+      document.getElementById(`${prefix}-calc-danger`).textContent = data.danger.toFixed(3);
+      document.getElementById(`${prefix}-calc-threshold`).textContent = `${data.threshold}%`;
+      document.getElementById(`${prefix}-calc-power`).textContent = data.power.toFixed(2);
+      document.getElementById(`${prefix}-calc-total`).textContent = data.totalPower.toFixed(2);
+      
+      // 도주 권장 표시
+      const fleeEl = document.getElementById(`${prefix}-flee`);
+      if (data.shouldFlee && battleState.round > 0) {
+        fleeEl.style.display = 'block';
+      } else {
+        fleeEl.style.display = 'none';
+      }
+    }
+    
+    function updateAll() {
+      updateDisplay('atk');
+      updateDisplay('def');
+    }
+    
+    // ===== 전투 로직 =====
+    function addLog(text, className = '') {
+      const content = document.getElementById('log-content');
+      const line = document.createElement('div');
+      line.className = `log-line ${className}`;
+      line.textContent = text;
+      content.appendChild(line);
+      content.scrollTop = content.scrollHeight;
+    }
+    
+    function executeOneRound() {
+      if (battleState.winner) return;
+      
+      battleState.round++;
+      document.getElementById('round-num').textContent = battleState.round;
+      
+      // 첫 라운드면 초기값 설정
+      if (battleState.round === 1) {
+        battleState.attacker.hp = parseFloat(document.getElementById('atk-hp').value);
+        battleState.attacker.neigong = parseFloat(document.getElementById('atk-neigong').value);
+        battleState.defender.hp = parseFloat(document.getElementById('def-hp').value);
+        battleState.defender.neigong = parseFloat(document.getElementById('def-neigong').value);
+        document.getElementById('log-content').innerHTML = '';
+      }
+      
+      const atk = getCharData('atk');
+      const def = getCharData('def');
+      
+      addLog(`══════ 제 ${battleState.round} 합 ══════`, 'round-title');
+      
+      // 선공 결정 (이동속도 → 공격속도)
+      let firstAttacker, secondAttacker;
+      if (atk.moveSpeed > def.moveSpeed) {
+        firstAttacker = { ...atk, prefix: 'atk', state: battleState.attacker };
+        secondAttacker = { ...def, prefix: 'def', state: battleState.defender };
+      } else if (def.moveSpeed > atk.moveSpeed) {
+        firstAttacker = { ...def, prefix: 'def', state: battleState.defender };
+        secondAttacker = { ...atk, prefix: 'atk', state: battleState.attacker };
+      } else {
+        // 이동속도 같으면 공격속도로
+        if (atk.attackTime <= def.attackTime) {
+          firstAttacker = { ...atk, prefix: 'atk', state: battleState.attacker };
+          secondAttacker = { ...def, prefix: 'def', state: battleState.defender };
+        } else {
+          firstAttacker = { ...def, prefix: 'def', state: battleState.defender };
+          secondAttacker = { ...atk, prefix: 'atk', state: battleState.attacker };
+        }
+      }
+      
+      addLog(`선공: ${firstAttacker.name} (이속 √${firstAttacker.bobeop || 1}, 공속 ${firstAttacker.attackTime.toFixed(2)}초)`, 'info');
+      
+      // 경지/심법 보정 계산
+      const gyeongjiDiff = firstAttacker.g.level - secondAttacker.g.level;
+      let firstMod = 1, secondMod = 1;
+      
+      if (gyeongjiDiff > 0) secondMod -= gyeongjiDiff * 0.03;
+      else if (gyeongjiDiff < 0) firstMod += gyeongjiDiff * 0.03;
+      
+      if (firstAttacker.s.total > secondAttacker.s.total) secondMod -= 0.03;
+      else if (firstAttacker.s.total < secondAttacker.s.total) firstMod -= 0.03;
+      
+      // 첫 번째 공격
+      processAttack(firstAttacker, secondAttacker, firstMod, secondMod);
+      
+      // 방어자 생존 체크
+      if (!checkCombatDisable(secondAttacker)) {
+        // 반격
+        processAttack(secondAttacker, firstAttacker, secondMod, firstMod);
+        checkCombatDisable(firstAttacker);
+      }
+      
+      // 생사경/자연경 내공 흡수
+      processNeigongDrain(atk, def);
+      
+      updateAll();
+      
+      // 승자 체크
+      checkWinner();
+    }
+    
+    function processAttack(attacker, defender, atkMod, defMod) {
+      // 명중률 체크 (내공 50% 이하)
+      let hitChance = 100;
+      if (attacker.state.neigong <= 50) {
+        hitChance = 95 - (50 - attacker.state.neigong) * 5;
+        hitChance = Math.max(hitChance, 5);
+      }
+      
+      const isHit = Math.random() * 100 < hitChance;
+      
+      if (!isHit) {
+        addLog(`${attacker.name}의 공격이 빗나갔다! (명중률: ${hitChance.toFixed(0)}%)`, 'warning');
+        // 빗나가면 공격자만 내상
+        const selfDamage = attacker.ungiRemain * attacker.danger;
+        attacker.state.hp -= selfDamage * 0.1;
+        attacker.state.neigong -= selfDamage * 0.9;
+        addLog(`  └ ${attacker.name} 자해 내상: 체력 -${(selfDamage * 0.1).toFixed(2)}, 내공 -${(selfDamage * 0.9).toFixed(2)}`, 'danger');
+        return;
+      }
+      
+      // 피해량 계산
+      const baseDamage = attacker.totalPower * 10 * atkMod;
+      const hpDamage = baseDamage * 0.2;
+      const neigongDamage = baseDamage * 0.8;
+      
+      // 피해 적용
+      defender.state.hp -= hpDamage;
+      defender.state.neigong -= neigongDamage;
+      
+      addLog(`${attacker.name} → ${defender.name}`, 'title');
+      addLog(`  └ 피해: 체력 -${hpDamage.toFixed(2)}, 내공 -${neigongDamage.toFixed(2)}`);
+      
+      // 공격자 내상 (운기 미완성)
+      const atkNaesang = attacker.ungiRemain * attacker.danger;
+      if (atkNaesang > 0) {
+        attacker.state.hp -= atkNaesang * 0.1;
+        attacker.state.neigong -= atkNaesang * 0.9;
+        addLog(`  └ ${attacker.name} 운기내상: 체력 -${(atkNaesang * 0.1).toFixed(2)}, 내공 -${(atkNaesang * 0.9).toFixed(2)}`, 'warning');
+      }
+      
+      // 방어자 내상
+      const defNaesang = defender.ungiRemain * defender.danger;
+      if (defNaesang > 0) {
+        defender.state.hp -= defNaesang * 0.1;
+        defender.state.neigong -= defNaesang * 0.9;
+        addLog(`  └ ${defender.name} 방어내상: 체력 -${(defNaesang * 0.1).toFixed(2)}, 내공 -${(defNaesang * 0.9).toFixed(2)}`, 'warning');
+      }
+      
+      // 상태 최소값 보정
+      attacker.state.hp = Math.max(0, attacker.state.hp);
+      attacker.state.neigong = Math.max(0, attacker.state.neigong);
+      defender.state.hp = Math.max(0, defender.state.hp);
+      defender.state.neigong = Math.max(0, defender.state.neigong);
+    }
+    
+    function processNeigongDrain(atk, def) {
+      // 생사경: 0.5% 흡수, 자연경: 1% 흡수
+      const atkLevel = atk.g.level;
+      const defLevel = def.g.level;
+      
+      if (atkLevel >= 8 && defLevel < atkLevel) {
+        const drainRate = atkLevel === 9 ? 0.01 : 0.005;
+        const drain = battleState.defender.neigong * drainRate;
+        battleState.defender.neigong -= drain;
+        battleState.attacker.neigong = Math.min(100, battleState.attacker.neigong + drain);
+        addLog(`${atk.name}(${atk.gyeongji}) 내공 흡수: +${drain.toFixed(2)}`, 'success');
+      }
+      
+      if (defLevel >= 8 && atkLevel < defLevel) {
+        const drainRate = defLevel === 9 ? 0.01 : 0.005;
+        const drain = battleState.attacker.neigong * drainRate;
+        battleState.attacker.neigong -= drain;
+        battleState.defender.neigong = Math.min(100, battleState.defender.neigong + drain);
+        addLog(`${def.name}(${def.gyeongji}) 내공 흡수: +${drain.toFixed(2)}`, 'success');
+      }
+    }
+    
+    function checkCombatDisable(char) {
+      if (char.state.neigong <= char.threshold || char.state.hp <= 0) {
+        addLog(`💀 ${char.name} 전투불능! (내공: ${char.state.neigong.toFixed(1)}%, 임계: ${char.threshold}%)`, 'danger');
+        return true;
+      }
+      
+      // 도주 권장 체크
+      if (char.state.neigong <= char.threshold + FLEE_THRESHOLD_BONUS) {
+        addLog(`⚠️ ${char.name}에게 도주를 권장합니다! (내공: ${char.state.neigong.toFixed(1)}%)`, 'warning');
+      }
+      
+      return false;
+    }
+    
+    function checkWinner() {
+      const atkData = getCharData('atk');
+      const defData = getCharData('def');
+      
+      const atkDisabled = battleState.attacker.neigong <= atkData.threshold || battleState.attacker.hp <= 0;
+      const defDisabled = battleState.defender.neigong <= defData.threshold || battleState.defender.hp <= 0;
+      
+      if (atkDisabled && defDisabled) {
+        battleState.winner = 'draw';
+        showResult('⚔️ 쌍방 전투불능 - 무승부!', 'result-draw');
+      } else if (atkDisabled) {
+        battleState.winner = 'defender';
+        showResult(`🏆 ${defData.name} 승리! (${battleState.round}합)`, 'result-winner');
+      } else if (defDisabled) {
+        battleState.winner = 'attacker';
+        showResult(`🏆 ${atkData.name} 승리! (${battleState.round}합)`, 'result-winner');
+      }
+      
+      if (battleState.winner) {
+        stopAutoBattle();
+      }
+    }
+    
+    function showResult(text, className) {
+      const resultEl = document.getElementById('battle-result');
+      const textEl = document.getElementById('result-text');
+      resultEl.style.display = 'block';
+      textEl.className = `result-text ${className}`;
+      textEl.textContent = text;
+      
+      addLog('', 'divider');
+      addLog(`═══════════════════════════`, 'divider');
+      addLog(text, className === 'result-winner' ? 'success' : 'info');
+    }
+    
+    // ===== 자동 전투 =====
+    function startAutoBattle() {
+      if (battleState.winner) return;
+      
+      battleState.isRunning = true;
+      document.getElementById('btn-auto').style.display = 'none';
+      document.getElementById('btn-stop').style.display = 'inline-block';
+      
+      battleState.autoInterval = setInterval(() => {
+        if (battleState.winner) {
+          stopAutoBattle();
+          return;
+        }
+        executeOneRound();
+      }, 800);
+    }
+    
+    function stopAutoBattle() {
+      battleState.isRunning = false;
+      if (battleState.autoInterval) {
+        clearInterval(battleState.autoInterval);
+        battleState.autoInterval = null;
+      }
+      document.getElementById('btn-auto').style.display = 'inline-block';
+      document.getElementById('btn-stop').style.display = 'none';
+    }
+    
+    function resetBattle() {
+      stopAutoBattle();
+      
+      battleState = {
+        round: 0,
+        isRunning: false,
+        autoInterval: null,
+        attacker: { hp: 100, neigong: 100 },
+        defender: { hp: 100, neigong: 100 },
+        winner: null
+      };
+      
+      // 슬라이더 초기화
+      document.getElementById('atk-hp').value = 100;
+      document.getElementById('atk-neigong').value = 100;
+      document.getElementById('def-hp').value = 100;
+      document.getElementById('def-neigong').value = 100;
+      
+      document.getElementById('round-num').textContent = '0';
+      document.getElementById('log-content').innerHTML = '<div class="log-line info">전투를 시작하려면 [1합] 또는 [자동 전투] 버튼을 누르세요.</div>';
+      document.getElementById('battle-result').style.display = 'none';
+      
+      updateAll();
+    }
+    
+    // 초기화
+    updateAll();
+  </script>
+</body>
+</html>
